@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<script>
+  const start = async () => {
+    const wasmModule = fetch("minimal_module.wasm");
+    const wasmObj = await WebAssembly.instantiateStreaming(wasmModule);
+    console.log(`Answer = ${wasmObj.instance.exports.answer()}`);
+  }
+  start();
+</script>
+</html>
