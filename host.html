@@ -1,10 +1,40 @@
 <!DOCTYPE html>
 <html>
+<canvas id="canvas" width="100" height="100"></canvas>
 <script>
   const start = async () => {
+    const memory = new WebAssembly.Memory({
+        initial: 1,
+        maximum: 1,
+        shared: false,
+    });
+    const memory8 = new Uint8ClampedArray(memory.buffer)
+    const host = {
+      "math": {
+        "sin": Math.sin,
+        "cos": Math.cos,
+        "tan": Math.tan,
+        "log": Math.log,
+      },
+      "mem": {
+        "pages": memory,
+        "offset": 0
+      }
+    };
     const wasmModule = fetch("minimal_module.wasm");
-    const wasmObj = await WebAssembly.instantiateStreaming(wasmModule);
-    console.log(`Answer = ${wasmObj.instance.exports.answer()}`);
+    const wasmObj = await WebAssembly.instantiateStreaming(wasmModule, host);
+
+    const size = 100;
+    const bytesWritten = wasmObj.instance.exports.shader(size);
+
+    console.log(`Answer = ${bytesWritten}`);
+    if (bytesWritten !== size*size*4) throw new Error("failed create image");
+
+    const img = new ImageData(memory8.slice(0, bytesWritten), size, size);
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.putImageData(img, 0, 0);
   }
   start();
 </script>
