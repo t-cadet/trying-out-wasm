@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<style>
+  html, body {margin: 0; height: 100%; overflow: hidden}
+</style>
+<html>
+<canvas id="canvas" width="100" height="100"></canvas>
+<script>
+  const start = async () => {
+    const WASM_PAGE_SIZE = 64 * 1024;
+    const MANDELBROT_IMG_WIDTH = 800;
+    const MANDELBROT_IMG_HEIGHT = 800;
+    const MANDELBROT_IMG_PIXEL_SIZE = MANDELBROT_IMG_WIDTH * MANDELBROT_IMG_HEIGHT;
+    const MANDELBROT_IMG_BYTE_SIZE = MANDELBROT_IMG_PIXEL_SIZE * 4;
+
+    const PALETTE_PAGES = 2;
+    const TOTAL_PAGES = Math.ceil(MANDELBROT_IMG_BYTE_SIZE / WASM_PAGE_SIZE) + PALETTE_PAGES;
+    const PALETTE_OFFSET = (TOTAL_PAGES - 2)*WASM_PAGE_SIZE;
+
+    const memory = new WebAssembly.Memory({
+        initial: TOTAL_PAGES,
+        <!-- maximum: MANDELBROT_IMG_BYTE_SIZE / WASM_PAGE_SIZE + 1, -->
+        <!-- shared: false, -->
+    });
+    const memory8 = new Uint8ClampedArray(memory.buffer)
+    const host = {
+      "math": {
+        "sin": Math.sin,
+        "cos": Math.cos,
+        "tan": Math.tan,
+        "log": Math.log,
+      },
+      "mem": {
+        "pages": memory,
+        "paletteOffset": PALETTE_OFFSET,
+      }
+    };
+    const wasmModule = fetch("fractal.wasm");
+    const wasmObj = await WebAssembly.instantiateStreaming(wasmModule, host);
+    wasmObj.instance.exports.mandelbrot(MANDELBROT_IMG_WIDTH, MANDELBROT_IMG_HEIGHT);
+    const bytesWritten = MANDELBROT_IMG_BYTE_SIZE;
+
+    <!-- console.log(`Got back ${bytesWritten} bytes from Wasm`); -->
+    <!-- if (bytesWritten !== MANDELBROT_IMG_BYTE_SIZE) throw new Error("failed to create image"); -->
+
+    const img = new ImageData(memory8.slice(0, bytesWritten), MANDELBROT_IMG_WIDTH, MANDELBROT_IMG_HEIGHT);
+
+    const canvas = document.getElementById("canvas");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
+    const topLeftX = 0.5*(window.innerWidth - MANDELBROT_IMG_WIDTH);
+    const topLeftY = 0.5*(window.innerHeight - MANDELBROT_IMG_HEIGHT);
+    ctx.putImageData(img, topLeftX, topLeftY);
+
+    console.log(`canvas width = ${canvas.width}`);
+    console.log(`canvas height = ${canvas.height}`);
+    console.log(`img top-left = (${topLeftX}, ${topLeftY})`);
+  }
+  start();
+</script>
+</html>
+
