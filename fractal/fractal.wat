@@ -2,7 +2,7 @@
 
   (import "mem" "pages" (memory 24))
 
-  ;; (global $paletteOffset (import "mem" "paletteOffset") i32)
+  (global $PALETTE_OFFSET (import "mem" "paletteOffset") i32)
 
   (global $BAILOUT f32 (f32.const 4.0))
   (global $BLACK i32 (i32.const 0xFF000000))
@@ -58,25 +58,25 @@
     )
   )
 )
-;; (func (export "gen_palette")
-;;       (param $max_iters i32)
+(func (export "gen_palette")
+      (param $max_iters i32)
 
-;;   (local $idx i32)
+  (local $idx i32)
 
-;;   (loop $next
-;;     (if (i32.gt_u (local.get $max_iters) (local.get $idx))
-;;       (then
-;;         (i32.store
-;;            (i32.add (global.get $palette_offset) (i32.shl (local.get $idx) (i32.const 2)))
-;;            (call $colour (local.get $idx))
-;;         )
+  (loop $next
+    (if (i32.gt_u (local.get $max_iters) (local.get $idx))
+      (then
+        (i32.store
+           (i32.add (global.get $PALETTE_OFFSET) (i32.shl (local.get $idx) (i32.const 2)))
+           (call $colour (local.get $idx))
+        )
 
-;;         (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
-;;         (br $next)
-;;       )
-;;     )
-;;   )
-;; )
+        (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
+        (br $next)
+      )
+    )
+  )
+)
 
 ;; MANDELBROT:
   (func $dup (param i32) (result i32 i32)
@@ -93,6 +93,53 @@
     i32.sub
   )
 
+  ;; check for early bailout
+  ;; if (x,y) in cardioid or bulb
+  (func $shouldBailoutEarly (param $x f32) (param $y f32) (result i32)
+    (local $ySquared f32)
+    (local $xMinusOneFourth f32)
+    (local $xPlusOne f32)
+    (local $q f32)
+
+    local.get $y
+    local.get $y
+    f32.mul
+    local.tee $ySquared
+
+    local.get $x
+    f32.const 0.25
+    f32.sub
+    local.tee $xMinusOneFourth
+    local.get $xMinusOneFourth
+    f32.mul
+
+    f32.add
+
+    local.tee $q
+    local.get $xMinusOneFourth
+    f32.add
+    local.get $q
+    f32.mul
+
+    f32.const 0.25
+    local.get $ySquared
+    f32.mul
+
+    f32.lt
+
+    local.get $x
+    f32.const 1
+    f32.add
+    local.tee $xPlusOne
+    local.get $xPlusOne
+    f32.mul
+    local.get $ySquared
+    f32.add
+    f32.const 0.0625
+    f32.lt
+
+    i32.or
+  )
   ;; f_c(z) = z*z + c
   (func $mandelbrotPixelShader (param $_x f32) (param $_y f32) (result i32)
     (local $i i32)
@@ -110,62 +157,72 @@
     f32.mul
     f32.const 2.1
     f32.sub
-    local.set $x
+    local.tee $x
 
     local.get $_y
     f32.const 2.5
     f32.mul
     f32.const 1.25
     f32.sub
-    local.set $y
+    local.tee $y
 
-    loop $loop
-      local.get $i
+    call $shouldBailoutEarly
+    if
       i32.const 1000
-      i32.lt_u
+      local.set $i
+    else
+      ;; escape time loop
+      loop $loop
+        local.get $i
+        i32.const 1000
+        i32.lt_u
 
-      local.get $zx
-      local.get $zx
-      f32.mul
-      local.tee $zxSquared
-      local.get $zy
-      local.get $zy
-      f32.mul
-      local.tee $zySquared
-      f32.add
-      global.get $BAILOUT
-      f32.lt
-
-      i32.and
-      if
-        ;; y := 2*x*y + y0
-        f32.const 2.0
         local.get $zx
+        local.get $zx
+        f32.mul
+        local.tee $zxSquared
+        local.get $zy
         local.get $zy
         f32.mul
-        f32.mul
-        local.get $y
+        local.tee $zySquared
         f32.add
-        local.set $zy
+        global.get $BAILOUT
+        f32.lt
 
-        ;; xtemp := x^2 - y^2 + x0
-        local.get $zxSquared
-        local.get $zySquared
-        f32.sub
-        local.get $x
-        f32.add
-        local.set $zx
+        i32.and
+        if
+          ;; y := 2*x*y + y0
+          local.get $zx
+          local.get $zx
+          f32.add
+          local.get $zy
+          f32.mul
+          local.get $y
+          f32.add
+          local.set $zy
 
-        local.get $i
-        i32.const 1
-        i32.add
-        local.set $i
-        br $loop
+          ;; xtemp := x^2 - y^2 + x0
+          local.get $zxSquared
+          local.get $zySquared
+          f32.sub
+          local.get $x
+          f32.add
+          local.set $zx
+
+          local.get $i
+          i32.const 1
+          i32.add
+          local.set $i
+          br $loop
+        end
       end
     end
-
+    global.get $PALETTE_OFFSET
     local.get $i
-    call $colour
+    i32.const 2
+    i32.shl
+    i32.add
+    i32.load
   )
 
   (func (export "mandelbrot") (param $w i32) (param $h i32)

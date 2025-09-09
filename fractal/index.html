@@ -36,7 +36,12 @@
     };
     const wasmModule = fetch("fractal.wasm");
     const wasmObj = await WebAssembly.instantiateStreaming(wasmModule, host);
+    console.log(wasmObj.instance.exports);
+    wasmObj.instance.exports.gen_palette(1000);
+    const start_time = performance.now();
     wasmObj.instance.exports.mandelbrot(MANDELBROT_IMG_WIDTH, MANDELBROT_IMG_HEIGHT);
+    const dt = Math.round((performance.now() - start_time)*10000)/10000;
+    console.log(`Fractal generated in ${dt} ms`);
     const bytesWritten = MANDELBROT_IMG_BYTE_SIZE;
 
     <!-- console.log(`Got back ${bytesWritten} bytes from Wasm`); -->
