@@ -22,3 +22,7 @@ Then open your browser at `http://localhost:8000`, and click on the HTML file yo
 - https://awesome.red-badger.com/chriswhealy/introduction-to-web-assembly-text
 - https://awesome.red-badger.com/chriswhealy/plotting-fractals-in-webassembly
 
+## Gallery
+
+![Mandelbrot](fractal/mandelbrot.png)
+
