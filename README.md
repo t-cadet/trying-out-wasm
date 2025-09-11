@@ -1,5 +1,7 @@
 # Trying Out Wasm
 
+Writing shaders in WebAssembly text (.wat)
+
 ## Live Demo
 
 https://t-cadet.github.io/trying-out-wasm/
