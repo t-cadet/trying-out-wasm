@@ -1,5 +1,9 @@
 # Trying Out Wasm
 
+## Live Demo
+
+https://t-cadet.github.io/trying-out-wasm/
+
 ## Getting Started
 
 ### Dependencies
