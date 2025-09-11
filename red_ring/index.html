@@ -21,7 +21,7 @@
         "offset": 0
       }
     };
-    const wasmModule = fetch("minimal_module.wasm");
+    const wasmModule = fetch("red_ring.wasm");
     const wasmObj = await WebAssembly.instantiateStreaming(wasmModule, host);
 
     const size = 100;

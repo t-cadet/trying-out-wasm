@@ -1,3 +1,4 @@
 *explore*
 *.cwasm
 *.wasm
+*.b64

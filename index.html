@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<style>
+  html, body {margin: 0; height: 100%; overflow: hidden}
+</style>
+<html>
+<canvas id="canvas"></canvas>
+<script>
+  const start = async () => {
+    const WASM_PAGE_SIZE = 64 * 1024;
+    const MANDELBROT_IMG_WIDTH = 800;
+    const MANDELBROT_IMG_HEIGHT = 800;
+    const MANDELBROT_IMG_PIXEL_SIZE = MANDELBROT_IMG_WIDTH * MANDELBROT_IMG_HEIGHT;
+    const MANDELBROT_IMG_BYTE_SIZE = MANDELBROT_IMG_PIXEL_SIZE * 4;
+
+    const PALETTE_PAGES = 2;
+    const TOTAL_PAGES = Math.ceil(MANDELBROT_IMG_BYTE_SIZE / WASM_PAGE_SIZE) + PALETTE_PAGES;
+    const PALETTE_OFFSET = (TOTAL_PAGES - 2)*WASM_PAGE_SIZE;
+
+    const memory = new WebAssembly.Memory({
+        initial: TOTAL_PAGES,
+    });
+    const memory8 = new Uint8ClampedArray(memory.buffer)
+    const host = {
+      "mem": {
+        "pages": memory,
+        "paletteOffset": PALETTE_OFFSET,
+      }
+    };
+    const wasmModule = fetch("data:application/wasm;base64,AGFzbQEAAAABCgJgAX8AYAJ/fwACIwIDbWVtDXBhbGV0dGVPZmZzZXQDfwADbWVtBXBhZ2VzAgAYAwMCAAEHHAILZ2VuX3BhbGV0dGUAAAptYW5kZWxicm90AAEKsQYCpQEBBn8DQCAAIAJLBEAgAkECdCIDIwBqIANB5AJqQf8HcSIBQYACTwRAQf4DIAFrQQAgAUGABEkbIQELIAFBEHRBgICAeHIgA0GAAWpB/wdxIgFBgAJPBEBB/gMgAWtBACABQYAESRshAQsgAUEIdCEGIANB/wdxIgFBgAJPBEBB/gMgAWtBACABQYAESRshAQsgASAGcnI2AgAgAkEBaiECDAELCwuHBQILewN/IwD9ESEKIACz/RMhCyABs/0TIQwDQCABIA5LBEADQCAAIA1LBEAgACAObCANakECdP0MAAAAAAAAAAAAAAAAAAAAACEC/QwAAAAAAAAAAAAAAAAAAAAAIQT9DAAAAAAAAAAAAAAAAAAAAAAhBSAOs/0TIAz95wH9DAAAIEAAACBAAAAgQAAAIED95gH9DAAAoD8AAKA/AACgPwAAoD/95QEiCCAI/eYBIgYgDf0R/QwAAAAAAQAAAAIAAAADAAAA/a4B/fsBIAv95wH9DClcL0ApXC9AKVwvQClcL0D95gH9DGZmBkBmZgZAZmYGQGZmBkD95QEiCf0MAACAPgAAgD4AAIA+AACAPv3lASIDIAP95gH95AEiByAD/eQBIAf95gH9DAAAgD4AAIA+AACAPgAAgD4gBv3mAf1DIAn9DAAAgD8AAIA/AACAPwAAgD/95AEiAyAD/eYBIAb95AH9DAAAgD0AAIA9AACAPQAAgD39Q/1Q/VMEQP0M6AMAAOgDAADoAwAA6AMAACECBQNAIAL9DOgDAADoAwAA6AMAAOgDAAD9OiAEIAT95gEiBiAFIAX95gEiA/3kAf0MAACAQAAAgEAAAIBAAACAQP1D/U4iB/1TBEAgBCAE/eQBIAX95gEgCP3kASEFIAYgA/3lASAJ/eQBIQQgAv0MAQAAAAEAAAABAAAAAQAAACAH/U79rgEhAgwBCwsL/QwAAAAAAAAAAAAAAAAAAAAAIAogAkEC/asB/a4BIgL9GwAoAgD9HAAgAv0bASgCAP0cASAC/RsCKAIA/RwCIAL9GwMoAgD9HAP9CwQAIA1BBGohDQwBCwtBACENIA5BAWohDgwBCwsL");
+    const wasmObj = await WebAssembly.instantiateStreaming(wasmModule, host);
+    wasmObj.instance.exports.gen_palette(1000);
+    const start_time = performance.now();
+    wasmObj.instance.exports.mandelbrot(MANDELBROT_IMG_WIDTH, MANDELBROT_IMG_HEIGHT);
+    const dt = Math.round((performance.now() - start_time)*10000)/10000;
+    console.log(`Fractal generated in ${dt} ms`);
+    const bytesWritten = MANDELBROT_IMG_BYTE_SIZE;
+
+    const img = new ImageData(memory8.slice(0, bytesWritten), MANDELBROT_IMG_WIDTH, MANDELBROT_IMG_HEIGHT);
+
+    const canvas = document.getElementById("canvas");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
+    const topLeftX = 0.5*(window.innerWidth - MANDELBROT_IMG_WIDTH);
+    const topLeftY = 0.5*(window.innerHeight - MANDELBROT_IMG_HEIGHT);
+    ctx.putImageData(img, topLeftX, topLeftY);
+  }
+  start();
+</script>
+</html>
+
